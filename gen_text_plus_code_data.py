@@ -37,8 +37,10 @@ def embed_text(text_codes, device, bert, bert_seq_length=512, max_seq_len_text=3
         x_text[:, i] = torch.Tensor(text_codes[i * bert_seq_length: (1 + i) * bert_seq_length])
         x_mask[:, i] = 1
     if (n * bert_seq_length <= len(text_codes)):
-        x_mask[len(text_codes) - bert_seq_length * (n + 1), n] = 1
-        x_text[:len(text_codes) - bert_seq_length * (n + 1), n] = torch.Tensor(text_codes[(n + 1) * bert_seq_length:])
+        # x_mask[len(text_codes) - bert_seq_length * (n + 1), n] = 1
+        # x_text[:len(text_codes) - bert_seq_length * (n + 1), n] = torch.Tensor(text_codes[(n + 1) * bert_seq_length:])
+        x_mask[:(len(text_codes) - bert_seq_length*(n+1)), n+1] = 1
+        x_text[:(len(text_codes) - bert_seq_length*(n+1)), n+1] = torch.Tensor(text_codes[(n + 1) * bert_seq_length:])
     x_text = x_text.to(device)
     x_mask = x_mask.to(device)
 
@@ -115,6 +117,7 @@ def main():
 
     args = parser.parse_args()
     df = pd.read_pickle(args.path)
+    df=df[:50]
     df_orig = df
     # remove organ donor admissions
     if ('DIAGNOSIS' in df.columns):
@@ -124,7 +127,7 @@ def main():
         df = df[REMOVE_DIAGNOSIS]
 
     df = df[~df['ICD9_CODE'].isna()] # drop patients with no icd9 code?
-    df = df[~(df['TEXT_REST'].isna() | df['TEXT_REST'].isna())]
+    df = df[~(df['TEXT_DISCHARGE'].isna() | df['TEXT_REST'].isna())]
 
     if ('TIMEDELTA' in df.columns):
         df['TIMEDELTA'] = df['TIMEDELTA'].fillna(pd.to_timedelta("0"))
@@ -211,6 +214,7 @@ def main():
             max_seq_len_text = max_seq_len_text // args.max_bert_seq_len + 1
             max_seq_len_text_r = max_seq_len_text
             print("text sequence rest length: {}".format(max_seq_len_text_r))
+
     try:
         for pid in tqdm(pids):
             pid_df = df[df['SUBJECT_ID'] == pid]
@@ -235,9 +239,9 @@ def main():
                 ethnicity[r['ETHNICITY']] = 1
                 demographics += list(ethnicity)
 
-                ethnicity = np.zeros((demographic_cols['ETHNICITY'].size, ), dtype=int)
-                ethnicity[r['ETHNICITY']] = 1
-                demographics += list(ethnicity)
+                # ethnicity = np.zeros((demographic_cols['ETHNICITY'].size, ), dtype=int)
+                # ethnicity[r['ETHNICITY']] = 1
+                # demographics += list(ethnicity)
 
                 admit_data['demographics'] = demographics
                 dtok, ptok, mtok, ctok = [], [], [], []
